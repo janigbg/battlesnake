@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using AStarNavigator;
 using Microsoft.AspNetCore.Mvc;
 using NetSnake.Model;
@@ -31,9 +32,17 @@ namespace NetSnake
             // Undvik väggar
             var head = request.you.body.First();
 
-            var tiles = GameBoard.GetNeighbors(new Tile(head.x, head.y));
+            var tiles = GameBoard.GetNeighbors(new Tile(head.x, head.y)).Where(x => !GameBoard.IsBlocked(x)).ToList();
 
-            var tile = tiles.FirstOrDefault(x => !GameBoard.IsBlocked(x));
+            if (tiles.Count == 0)
+            {
+                return Ok(new Move {Taunt = "Scheisse!!" });
+            }
+
+            Random rnd = new Random();
+            int index = rnd.Next(0, tiles.Count);
+
+            var tile = tiles[index];
 
             switch (tile)
             {
