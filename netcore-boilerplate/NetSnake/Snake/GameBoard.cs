@@ -21,7 +21,7 @@ namespace NetSnake.Snake
         private BoardCell[] Board { get; set; }
         private int X { get; }
         private int Y { get; }
-        private Model.Snake Me { get; }
+        private Model.Snake Me { get; set; }
 
         public GameBoard(Model.Snake me, Board board)
         {
@@ -31,13 +31,15 @@ namespace NetSnake.Snake
             Board = new BoardCell[X * Y];
         }
 
-        public void Update(Board board)
+        public void Update(Model.Snake me, Board board)
         {
             Array.Clear(Board, 0, Board.Length);
             foreach (var food in board.food)
             {
                 Board[food.y * X + food.x] = BoardCell.Food;
             }
+
+            Me = me;
 
             foreach (var snake in board.snakes)
             {
@@ -53,12 +55,32 @@ namespace NetSnake.Snake
 
         public bool IsBlocked(Tile coord)
         {
-            throw new NotImplementedException();
+            var val = Board[(int) coord.Y * X + (int) coord.Y];
+            return val == BoardCell.Snake || val == BoardCell.Me;
         }
 
         public IEnumerable<Tile> GetNeighbors(Tile tile)
         {
-            throw new NotImplementedException();
+            // Up
+            if (tile.Y > 0)
+            {
+                yield return new Tile(tile.X, tile.Y - 1);
+            }
+            // down
+            if (tile.Y < Y - 1)
+            {
+                yield return new Tile(tile.X, tile.Y + 1);
+            }
+            // left
+            if (tile.X > 0)
+            {
+                yield return new Tile(tile.X - 1, tile.Y);
+            }
+            // right
+            if (tile.X < X - 1)
+            {
+                yield return new Tile(tile.X + 1, tile.Y);
+            }
         }
     }
 }
