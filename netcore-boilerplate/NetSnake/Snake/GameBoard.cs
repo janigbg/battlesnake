@@ -55,7 +55,7 @@ namespace NetSnake.Snake
 
         public bool IsBlocked(Tile coord)
         {
-            var val = Board[(int) coord.Y * X + (int) coord.Y];
+            var val = Board[(int) coord.Y * X + (int) coord.X];
             return val == BoardCell.Snake || val == BoardCell.Me;
         }
 
