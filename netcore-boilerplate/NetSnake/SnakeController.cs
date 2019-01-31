@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using AStarNavigator;
 using AStarNavigator.Algorithms;
@@ -39,26 +40,33 @@ namespace NetSnake
                 GameBoard,
                 new PythagorasAlgorithm(),
                 heuristic);
-
+            
             int dist = Int32.MaxValue;
             Tile? foodTile = null;
+            bool foodFound = false;
+            sortedFood
             foreach (var food in request.board.food)
             {
                 var newDist = heuristic.Calculate(ToTile(head), ToTile(food));
-                if (newDist< dist && navigator.Navigate(ToTile(head), ToTile(food)).Any() &&
+                var pathToFood = navigator.Navigate(ToTile(head), ToTile(food)) ?? new List<Tile>();
+                if (newDist < dist && pathToFood.Any() &&
                     GameBoard.GetNeighbors(ToTile(food)).Count(t => !GameBoard.IsBlocked(t)) > 1)
                 {
                     dist = (int)newDist;
                     foodTile = ToTile(food);
+                    foodFound = true;
                 }
             }
 
-            if (foodTile.HasValue)
-            {
-                var startPath = navigator.Navigate(ToTile(head), foodTile.Value).FirstOrDefault();
-                if (startPath != null && GetMovement(startPath, head, out var foodMove)) return foodMove;
-            }
 
+
+            if (foodFound)
+            {
+                var pathToFood = (navigator.Navigate(ToTile(head), foodTile.Value) ?? new List<Tile>()).ToList();
+                var startPath = pathToFood.FirstOrDefault();
+                if (pathToFood.Any() && GetMovement(startPath, head, out var foodMove)) return Ok(new Move { Direction = foodMove });
+            }
+            
 
             // Undvik väggar
             
@@ -70,44 +78,104 @@ namespace NetSnake
                 return Ok(new Move {Taunt = "Scheisse!!" });
             }
 
-            Random rnd = new Random();
-            int index = rnd.Next(0, tiles.Count);
+            var tile = GetBestTile(tiles);
 
-            var tile = tiles[index];
 
-            if (GetMovement(tile, head, out var move)) return move;
+            if (GetMovement(tile, head, out var dir)) return Ok(new Move {Direction = dir});
 
             return Ok(new Move());
         }
 
-        private bool GetMovement(Tile tile, Coords head, out IActionResult move)
+        private Tile GetBestTile(List<Tile> tiles)
+        {
+            var maxFreeTiles = 0;
+            Tile? returnTile = null;
+
+            foreach (var tile in tiles)
+            {
+                var freeTiles = GameBoard.GetNeighbors(tile).Count(x => !GameBoard.IsBlocked(x));
+                if (freeTiles > maxFreeTiles)
+                {
+                    maxFreeTiles = freeTiles;
+                    returnTile = tile;
+                }
+
+            }
+
+            if (!returnTile.HasValue)
+            {
+                Random rnd = new Random();
+                int index = rnd.Next(0, tiles.Count);
+                returnTile = tiles[index];
+
+            }
+
+            return returnTile.Value;
+        }
+
+        private bool GetMovement(Tile tile, Coords head, out Direction dir)
         {
             switch (tile)
             {
                 case Tile t when t.Y < head.y:
                 {
-                    move = Ok(new Move {Direction = Direction.Up});
+                    dir = Direction.Up;
                     return true;
                 }
                 case Tile t when t.Y > head.y:
                 {
-                    move = Ok(new Move {Direction = Direction.Down});
+                    dir = Direction.Down;
                     return true;
                 }
                 case Tile t when t.X < head.x:
                 {
-                    move = Ok(new Move {Direction = Direction.Left});
+                    dir = Direction.Left;
                     return true;
                 }
                 case Tile t when t.X > head.x:
                 {
-                    move = Ok(new Move {Direction = Direction.Right});
+                    dir = Direction.Right;
                     return true;
                 }
             }
 
-            move = Ok(new Move());
+            dir = Direction.Up;
             return false;
+        }
+
+        private Direction GetDirection(Tile from, Tile to)
+        {
+            switch (to)
+            {
+                case Tile t when t.Y < from.Y:
+                    return Direction.Up;
+                case Tile t when t.Y > from.Y:
+                    return Direction.Down;
+                case Tile t when t.X < from.X:
+                    return Direction.Left;
+                case Tile t when t.X > from.X:
+                    return Direction.Right;
+            }
+
+            // default
+            return Direction.Up;
+        }
+
+        private Direction GetBestDirection(List<Tile> tiles, Tile head, Direction curDir)
+        {
+            foreach (var tile in tiles)
+            {
+                var dir = GetDirection(head, tile);
+
+                if (dir == curDir) return dir;
+            }
+
+            Random rnd = new Random();
+            int index = rnd.Next(0, tiles.Count);
+
+            var rndTile = tiles[index];
+
+            return GetDirection(head, rndTile);
         }
 
         private static Tile ToTile(Coords coords)
@@ -128,5 +196,9 @@ namespace NetSnake
         {
             return Ok();
         }
+    }
+
+    public class SortableFood {
+
     }
 }
