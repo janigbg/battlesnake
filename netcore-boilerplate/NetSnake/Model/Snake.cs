@@ -7,14 +7,9 @@ namespace NetSnake.Model
 {
     public class Snake
     {
-        public Guid Id;
-
-        public string Name;
-
-        public string Taunt;
-
-        public IList<Point> Coordinates = new List<Point>();
-
-        public int Health;
+        public string id { get; set; }
+        public string name { get; set; }
+        public int health { get; set; }
+        public List<Coords> body { get; set; }
     }
 }

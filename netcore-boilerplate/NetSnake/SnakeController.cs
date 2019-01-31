@@ -8,14 +8,28 @@ namespace NetSnake
     {
         [HttpPost]
         [Route("start")]
-        public IActionResult Start([FromBody] Game game)
+        public IActionResult Start([FromBody] NetSnake.Model.Request request)
         {
             return Ok(new Configuration());
         }
 
         [HttpPost]
         [Route("move")]
-        public IActionResult Move([FromBody] Game game)
+        public IActionResult Move([FromBody] NetSnake.Model.Request request)
+        {
+            return Ok(new Move());
+        }
+
+        [HttpPost]
+        [Route("end")]
+        public IActionResult End([FromBody] NetSnake.Model.Request request)
+        {
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("ping")]
+        public IActionResult Ping()
         {
             return Ok();
         }
