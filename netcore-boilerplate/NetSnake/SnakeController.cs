@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using AStarNavigator;
 using Microsoft.AspNetCore.Mvc;
@@ -31,33 +32,56 @@ namespace NetSnake
             GameBoard.Update(request.you, request.board);
 
             // Undvik väggar
-            var head = request.you.body.First();
+            var head = new Tile(request.you.body.First().x, request.you.body.First().y);
+            var body = new Tile(request.you.body.Skip(1).First().x, request.you.body.Skip(1).First().y);
 
-            var tiles = GameBoard.GetNeighbors(new Tile(head.x, head.y)).Where(x => !GameBoard.IsBlocked(x)).ToList();
+            var tiles = GameBoard.GetNeighbors(head).Where(x => !GameBoard.IsBlocked(x)).ToList();
 
             if (tiles.Count == 0)
             {
                 return Ok(new Move {Taunt = "Scheisse!!" });
             }
 
+            var curDir = GetDirection(body, head);
+
+            var dir = GetBestDirection(tiles, head, curDir);
+
+            return Ok(new Move {Direction = dir});
+        }
+
+        private Direction GetDirection(Tile from, Tile to)
+        {
+            switch (to)
+            {
+                case Tile t when t.Y < from.Y:
+                    return Direction.Up;
+                case Tile t when t.Y > from.Y:
+                    return Direction.Down;
+                case Tile t when t.X < from.X:
+                    return Direction.Left;
+                case Tile t when t.X > from.X:
+                    return Direction.Right;
+            }
+
+            // default
+            return Direction.Up;
+        }
+
+        private Direction GetBestDirection(List<Tile> tiles, Tile head, Direction curDir)
+        {
+            foreach (var tile in tiles)
+            {
+                var dir = GetDirection(head, tile);
+
+                if (dir == curDir) return dir;
+            }
+
             Random rnd = new Random();
             int index = rnd.Next(0, tiles.Count);
 
-            var tile = tiles[index];
+            var rndTile = tiles[index];
 
-            switch (tile)
-            {
-                case Tile t when t.Y < head.y:
-                    return Ok(new Move { Direction = Direction.Up });
-                case Tile t when t.Y > head.y:
-                    return Ok(new Move { Direction = Direction.Down });
-                case Tile t when t.X < head.x:
-                    return Ok(new Move { Direction = Direction.Left });
-                case Tile t when t.X > head.x:
-                    return Ok(new Move { Direction = Direction.Right });
-            }
-
-            return Ok(new Move());
+            return GetDirection(head, rndTile);
         }
 
         [HttpPost]
