@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using AStarNavigator;
+using AStarNavigator.Algorithms;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using NetSnake.Model;
 using NetSnake.Snake;
 
@@ -31,57 +32,86 @@ namespace NetSnake
             GameBoard = new GameBoard(request.you, request.board);
             GameBoard.Update(request.you, request.board);
 
-            // Undvik väggar
-            var head = new Tile(request.you.body.First().x, request.you.body.First().y);
-            var body = new Tile(request.you.body.Skip(1).First().x, request.you.body.Skip(1).First().y);
+            var head = request.you.body.First();
+            var heuristic = new ManhattanHeuristicAlgorithm();
+            TileNavigator navigator = new TileNavigator(
+                GameBoard,
+                GameBoard,
+                new PythagorasAlgorithm(),
+                heuristic);
 
-            var tiles = GameBoard.GetNeighbors(head).Where(x => !GameBoard.IsBlocked(x)).ToList();
+            int dist = Int32.MaxValue;
+            Tile? foodTile = null;
+            foreach (var food in request.board.food)
+            {
+                var newDist = heuristic.Calculate(ToTile(head), ToTile(food));
+                if (newDist< dist)
+                {
+                    dist = (int)newDist;
+                    foodTile = ToTile(food);
+                }
+            }
+
+            if (foodTile.HasValue)
+            {
+                var startPath = navigator.Navigate(ToTile(head), foodTile.Value).FirstOrDefault();
+                if (startPath != null && GetMovement(startPath, head, out var foodMove)) return foodMove;
+            }
+
+
+            // Undvik väggar
+            
+
+            var tiles = GameBoard.GetNeighbors(new Tile(head.x, head.y)).Where(x => !GameBoard.IsBlocked(x)).ToList();
 
             if (tiles.Count == 0)
             {
                 return Ok(new Move {Taunt = "Scheisse!!" });
             }
 
-            var curDir = GetDirection(body, head);
-
-            var dir = GetBestDirection(tiles, head, curDir);
-
-            return Ok(new Move {Direction = dir});
-        }
-
-        private Direction GetDirection(Tile from, Tile to)
-        {
-            switch (to)
-            {
-                case Tile t when t.Y < from.Y:
-                    return Direction.Up;
-                case Tile t when t.Y > from.Y:
-                    return Direction.Down;
-                case Tile t when t.X < from.X:
-                    return Direction.Left;
-                case Tile t when t.X > from.X:
-                    return Direction.Right;
-            }
-
-            // default
-            return Direction.Up;
-        }
-
-        private Direction GetBestDirection(List<Tile> tiles, Tile head, Direction curDir)
-        {
-            foreach (var tile in tiles)
-            {
-                var dir = GetDirection(head, tile);
-
-                if (dir == curDir) return dir;
-            }
-
             Random rnd = new Random();
             int index = rnd.Next(0, tiles.Count);
 
-            var rndTile = tiles[index];
+            var tile = tiles[index];
 
-            return GetDirection(head, rndTile);
+            if (GetMovement(tile, head, out var move)) return move;
+
+            return Ok(new Move());
+        }
+
+        private bool GetMovement(Tile tile, Coords head, out IActionResult move)
+        {
+            switch (tile)
+            {
+                case Tile t when t.Y < head.y:
+                {
+                    move = Ok(new Move {Direction = Direction.Up});
+                    return true;
+                }
+                case Tile t when t.Y > head.y:
+                {
+                    move = Ok(new Move {Direction = Direction.Down});
+                    return true;
+                }
+                case Tile t when t.X < head.x:
+                {
+                    move = Ok(new Move {Direction = Direction.Left});
+                    return true;
+                }
+                case Tile t when t.X > head.x:
+                {
+                    move = Ok(new Move {Direction = Direction.Right});
+                    return true;
+                }
+            }
+
+            move = Ok(new Move());
+            return false;
+        }
+
+        private static Tile ToTile(Coords coords)
+        {
+            return new Tile(coords.x, coords.y);
         }
 
         [HttpPost]
