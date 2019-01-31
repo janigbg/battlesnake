@@ -45,7 +45,8 @@ namespace NetSnake
             foreach (var food in request.board.food)
             {
                 var newDist = heuristic.Calculate(ToTile(head), ToTile(food));
-                if (newDist< dist)
+                if (newDist< dist && navigator.Navigate(ToTile(head), ToTile(food)).Any() &&
+                    GameBoard.GetNeighbors(ToTile(food)).Count(t => !GameBoard.IsBlocked(t)) > 1)
                 {
                     dist = (int)newDist;
                     foodTile = ToTile(food);
