@@ -17,6 +17,10 @@ namespace NetSnake
         [Route("move")]
         public IActionResult Move([FromBody] NetSnake.Model.Request request)
         {
+            // Hitta närmsta mat
+            // Undvik ormar
+            // Undvik väggar
+
             return Ok(new Move());
         }
 
