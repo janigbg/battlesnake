@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using NetSnake.Model;
 using NetSnake.Snake;
+using Remotion.Linq.Clauses;
 
 namespace NetSnake
 {
@@ -42,25 +43,35 @@ namespace NetSnake
                 heuristic);
             
             int dist = Int32.MaxValue;
-            Tile? foodTile = null;
-            bool foodFound = false;
-            sortedFood
+            //Tile? foodTile = null;
+            //bool foodFound = false;
+            var sortedFood = new List<SortableFood>();
+
             foreach (var food in request.board.food)
             {
+
                 var newDist = heuristic.Calculate(ToTile(head), ToTile(food));
                 var pathToFood = navigator.Navigate(ToTile(head), ToTile(food)) ?? new List<Tile>();
+
+                sortedFood.Add(new SortableFood {
+                    Food = ToTile(food),
+                    Distance = (int)newDist,
+                    Neighbours = GameBoard.GetNeighbors(ToTile(food)).Where(t => !GameBoard.IsBlocked(t)).ToList() });
+/*
                 if (newDist < dist && pathToFood.Any() &&
                     GameBoard.GetNeighbors(ToTile(food)).Count(t => !GameBoard.IsBlocked(t)) > 1)
                 {
                     dist = (int)newDist;
                     foodTile = ToTile(food);
                     foodFound = true;
-                }
+                }*/
             }
 
 
+            var foodTile = SelectBestFood(sortedFood);
 
-            if (foodFound)
+
+            if (foodTile != null)
             {
                 var pathToFood = (navigator.Navigate(ToTile(head), foodTile.Value) ?? new List<Tile>()).ToList();
                 var startPath = pathToFood.FirstOrDefault();
@@ -84,6 +95,19 @@ namespace NetSnake
             if (GetMovement(tile, head, out var dir)) return Ok(new Move {Direction = dir});
 
             return Ok(new Move());
+        }
+
+        private Tile? SelectBestFood(List<SortableFood> sortedFood)
+        {
+
+            foreach (var food in sortedFood.Where(x => x.Neighbours.Count > 1))
+            {
+                food.Rank = food.Distance - food.Neighbours.Count;
+            }
+
+            sortedFood.Sort((x, y) => x.Rank.CompareTo(y.Rank));
+
+            return sortedFood.FirstOrDefault()?.Food;
         }
 
         private Tile GetBestTile(List<Tile> tiles)
@@ -199,6 +223,10 @@ namespace NetSnake
     }
 
     public class SortableFood {
+        public Tile Food { get; set; }
+        public int Distance { get; set; }
+        public List<Tile> Neighbours { get; set; }
 
+        public double Rank { get; set; }
     }
 }
