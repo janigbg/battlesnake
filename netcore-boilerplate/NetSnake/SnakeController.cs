@@ -10,7 +10,7 @@ namespace NetSnake
     [Route("")]
     public class SnakeController : Controller
     {
-        public static GameBoard GameBoard { get; set; }
+        public GameBoard GameBoard { get; set; }
 
         [HttpPost]
         [Route("start")]
@@ -27,6 +27,7 @@ namespace NetSnake
         {
             // Hitta närmsta mat
             // Undvik ormar
+            GameBoard = new GameBoard(request.you, request.board);
             GameBoard.Update(request.you, request.board);
 
             // Undvik väggar
